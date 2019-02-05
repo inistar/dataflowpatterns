@@ -88,17 +88,19 @@ public class MultipleStorageLocations {
     }
     private static final byte[] FAMILY = Bytes.toBytes("cf");
     private static final byte[] QUALIFIER = Bytes.toBytes("qualifier");
+
     // This is a random value so that there will be some changes in the table
     // each time the job runs.
     private static final byte[] VALUE = Bytes.toBytes("value_" + (60 * Math.random()));
-    // [START bigtable_dataflow_connector_process_element]
 
     static final DoFn<Long, Mutation> MUTATION_TRANSFORM = new DoFn<Long, Mutation>() {
         private static final long serialVersionUID = 1L;
 
         @ProcessElement
-        public void processElement(DoFn<String, Mutation>.ProcessContext c) throws Exception {
-            c.output(new Put(c.element().getBytes()).addColumn(FAMILY, QUALIFIER, VALUE));
+        public void processElement(DoFn<Long, Mutation>.ProcessContext c) throws Exception {
+            String temp = "This is a test";
+
+            c.output(new Put(temp.getBytes()).addColumn(FAMILY, QUALIFIER, VALUE));
         }
     };
 
@@ -108,29 +110,32 @@ public class MultipleStorageLocations {
 
         Pipeline pipeline = Pipeline.create(options);
 
-        PCollection<Long> input = pipeline.apply(GenerateSequence.from(0L).to(1000L));
-//        PCollection<TableRow> BQformat = input.apply(ParDo.of(new FormatBigQueryFn()));
-//
-////       BIGQUERY
-////       Schema is only necessary for the first time when the table is not created. Change
-////       CREATE_IF_NEEDED if a new table needs to be created and uncomment the schema parts.
-////        TableSchema schema = createBigQuerySchema();
-//        BQformat.apply(BigQueryIO.writeTableRows()
-//                .to(options.getOutputDataset())
-////                .withSchema(schema)
-//                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-//                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
+        PCollection<Long> input = pipeline.apply(GenerateSequence.from(0L).to(1000000L));
+        PCollection<TableRow> BQformat = input.apply(ParDo.of(new FormatBigQueryFn()));
+
+//       BIGQUERY
+//       Schema is only necessary for the first time when the table is not created. Change
+//       CREATE_IF_NEEDED if a new table needs to be created and uncomment the schema parts.
+
+//        TableSchema schema = createBigQuerySchema();
+        BQformat.apply(BigQueryIO.writeTableRows()
+                .to(options.getOutputDataset())
+//                .withSchema(schema)
+                .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
 
 //      BIGTABLE
-
         CloudBigtableTableConfiguration config = getCloudBigTableConfiguration(options);
-//        pipeline.apply(Create.of("Hello", "World"))
-                input.apply(ParDo.of(MUTATION_TRANSFORM))
+        input.apply(ParDo.of(MUTATION_TRANSFORM))
                 .apply(CloudBigtableIO.writeToTable(config));
-
-//        input.apply("BigTableTransform", ParDo.of(new FormatBigTableFn()))
-//                .apply("WriteToBigTable", CloudBigtableIO.writeToTable(config));
 
         pipeline.run();
     }
 }
+
+/**
+ --outputDataset=testing.test
+ --outputBigtableInstance=bigtabletestini
+ --outputBigtableTable=newtable
+ --runner=DirectRunner
+ **/
