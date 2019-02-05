@@ -32,7 +32,17 @@ public class MultipleStorageLocations {
 
     }
 
-    static class FormatBigQueryFn extends DoFn<Long, TableRow> {
+    private static TableSchema createBigQuerySchema() {
+
+        List<TableFieldSchema> fields = new ArrayList<>();
+        fields.add(new TableFieldSchema().setName("event_id").setType("INT64"));
+        fields.add(new TableFieldSchema().setName("message").setType("STRING"));
+        fields.add(new TableFieldSchema().setName("event_ts").setType("STRING"));
+
+        return new TableSchema().setFields(fields);
+    }
+
+    public static class FormatBigQueryFn extends DoFn<Long, TableRow> {
 
         static long increment = 0;
 
@@ -57,21 +67,19 @@ public class MultipleStorageLocations {
 
         Pipeline pipeline = Pipeline.create(options);
 
-        List<TableFieldSchema> fields = new ArrayList<>();
-        fields.add(new TableFieldSchema().setName("event_id").setType("INT64"));
-        fields.add(new TableFieldSchema().setName("message").setType("STRING"));
-        fields.add(new TableFieldSchema().setName("event_ts").setType("STRING"));
 
-        TableSchema schema = new TableSchema().setFields(fields);
 
         PCollection<Long> input = pipeline.apply(GenerateSequence.from(0L).to(1000L));
         PCollection<TableRow> BQformat = input.apply(ParDo.of(new FormatBigQueryFn()));
 
+//       Schema is only necessary for the first time when the table is not created. Change
+//       CREATE_IF_NEEDED if a new table needs to be created and uncomment the schema parts.
+//        TableSchema schema = createBigQuerySchema();
         BQformat.apply(BigQueryIO.writeTableRows()
                 .to(options.getOutputDataset())
-                .withSchema(schema)
+//                .withSchema(schema)
                 .withWriteDisposition(BigQueryIO.Write.WriteDisposition.WRITE_APPEND)
-                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_IF_NEEDED));
+                .withCreateDisposition(BigQueryIO.Write.CreateDisposition.CREATE_NEVER));
 
         pipeline.run();
     }
