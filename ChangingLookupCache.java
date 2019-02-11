@@ -1,5 +1,6 @@
 package com.springml.dataflow.patterns;
 
+import com.google.cloud.bigquery.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -8,16 +9,18 @@ import org.apache.beam.sdk.options.PipelineOptionsFactory;
 import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.options.Description;
-import org.apache.beam.sdk.transforms.windowing.AfterProcessingTime;
-import org.apache.beam.sdk.transforms.windowing.GlobalWindows;
-import org.apache.beam.sdk.transforms.windowing.Repeatedly;
-import org.apache.beam.sdk.transforms.windowing.Window;
+import org.apache.beam.sdk.transforms.windowing.*;
+import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.joda.time.Duration;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Map;
+import java.util.UUID;
+
+import static org.apache.beam.sdk.transforms.View.asMap;
 
 public class ChangingLookupCache {
 
@@ -69,14 +72,37 @@ public class ChangingLookupCache {
         PCollection<String> mainStream = pipeline.apply("Read from Pubsub",
                 PubsubIO.readStrings().fromTopic(options.getInputPubsubTopic()));
 
-        mainStream.apply("Print the Data", ParDo.of(new DoFn<String, String>(){
+        String query = "SELECT * FROM `dataflowtesting-218212.testing.apple`";
 
-            @ProcessElement
-            public void processElement(ProcessContext c){
-                System.out.println(c.element());
-                c.output("test");
-            }
-        }));
+        final PCollectionView<Map<String, String>> sideInput = pipeline
+                .apply(String.format("Updating every %s seconds", 10),
+                        GenerateSequence.from(0).withRate(1, Duration.standardSeconds(10)))
+                .apply("Assign to Fixed Window", Window.<Long>into(FixedWindows.of(Duration.standardSeconds(10))))
+                .apply(new ReadSlowChangingTable("Read BigQuery Table", query, "event_id", "event_ts"))
+                .apply("View as Map", View.<String, String>asMap());
+
+
+        mainStream
+
+                .apply("Assign to Fixed Window", Window.<String>into(FixedWindows.of(Duration.standardSeconds(10))))
+
+                .apply("Enrich MainInput with SideInput", ParDo.of(new DoFn<String, String>() {
+
+                    @ProcessElement
+                    public void processElement(ProcessContext c) {
+
+                        String event_id = c.element();
+
+                        Map<String, String> enrichData = c.sideInput(sideInput);
+
+                        String output = event_id + ", " + enrichData.get(event_id);
+
+                        System.out.println(output);
+
+                        c.output(output);
+                    }
+
+                }).withSideInputs(sideInput));
 
         pipeline.run().waitUntilFinish();
     }
