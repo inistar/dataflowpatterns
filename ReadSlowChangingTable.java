@@ -1,6 +1,15 @@
 package com.springml.dataflow.patterns;
 
-import com.google.cloud.bigquery.*;
+import com.google.cloud.bigquery.BigQuery;
+import com.google.cloud.bigquery.BigQueryOptions;
+import com.google.cloud.bigquery.FieldValueList;
+import com.google.cloud.bigquery.Job;
+import com.google.cloud.bigquery.JobId;
+import com.google.cloud.bigquery.JobInfo;
+import com.google.cloud.bigquery.QueryJobConfiguration;
+import com.google.cloud.bigquery.QueryResponse;
+import com.google.cloud.bigquery.TableResult;
+
 import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.PTransform;
 import org.apache.beam.sdk.transforms.ParDo;
@@ -29,7 +38,7 @@ public class ReadSlowChangingTable extends PTransform<PCollection<Long>, PCollec
             @ProcessElement
             public void processElement(ProcessContext c) throws InterruptedException{
 
-                System.out.println(c.element());
+                System.out.println("Generate Sequence: " + c.element());
 
                 BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
 

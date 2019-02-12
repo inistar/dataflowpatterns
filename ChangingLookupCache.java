@@ -1,6 +1,5 @@
 package com.springml.dataflow.patterns;
 
-import com.google.cloud.bigquery.*;
 import org.apache.beam.sdk.Pipeline;
 import org.apache.beam.sdk.io.GenerateSequence;
 import org.apache.beam.sdk.io.gcp.pubsub.PubsubIO;
@@ -10,7 +9,6 @@ import org.apache.beam.sdk.testing.PAssert;
 import org.apache.beam.sdk.transforms.*;
 import org.apache.beam.sdk.options.Description;
 import org.apache.beam.sdk.transforms.windowing.*;
-import org.apache.beam.sdk.values.KV;
 import org.apache.beam.sdk.values.PCollection;
 import org.apache.beam.sdk.values.PCollectionView;
 import org.joda.time.Duration;
@@ -18,7 +16,7 @@ import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Map;
-import java.util.UUID;
+
 
 import static org.apache.beam.sdk.transforms.View.asMap;
 
@@ -72,7 +70,7 @@ public class ChangingLookupCache {
         PCollection<String> mainStream = pipeline.apply("Read from Pubsub",
                 PubsubIO.readStrings().fromTopic(options.getInputPubsubTopic()));
 
-        String query = "SELECT * FROM `dataflowtesting-218212.testing.apple`";
+        String query = "SELECT event_id, event_ts FROM `dataflowtesting-218212.testing.apple`";
 
         final PCollectionView<Map<String, String>> sideInput = pipeline
                 .apply(String.format("Updating every %s seconds", 10),
@@ -83,13 +81,13 @@ public class ChangingLookupCache {
 
 
         mainStream
-
-                .apply("Assign to Fixed Window", Window.<String>into(FixedWindows.of(Duration.standardSeconds(10))))
-
+                .apply("Assign to Fixed Window", Window.<String>into(FixedWindows.of(Duration.standardSeconds(20))))
                 .apply("Enrich MainInput with SideInput", ParDo.of(new DoFn<String, String>() {
 
                     @ProcessElement
                     public void processElement(ProcessContext c) {
+
+                        System.out.println("Pubsub Message: " + c.element());
 
                         String event_id = c.element();
 
