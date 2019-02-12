@@ -105,3 +105,8 @@ public class ChangingLookupCache {
         pipeline.run().waitUntilFinish();
     }
 }
+
+/**
+--inputPubsubTopic=projects/dataflowtesting-218212/topics/streamdemo
+ --runner=DirectRunner
+ **/
