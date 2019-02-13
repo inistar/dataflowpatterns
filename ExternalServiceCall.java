@@ -42,16 +42,21 @@ public class ExternalServiceCall {
 
         static long increment = 0;
 
+        private void startBundle(){
+
+        }
+
         @ProcessElement
         public void processElement(@Element Long number, OutputReceiver<TableRow> out) {
             TableRow row = new TableRow();
 
             Random rand = new Random();
             int n = rand.nextInt(100);
+            increment += 1;
 
             String message = getMessage("test");
 
-            row.set("event_id", n);
+            row.set("event_id", increment);
             row.set("message", message);
 
             out.output(row);
