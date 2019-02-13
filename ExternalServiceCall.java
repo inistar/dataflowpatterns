@@ -13,6 +13,7 @@ import org.apache.beam.sdk.transforms.DoFn;
 import org.apache.beam.sdk.transforms.ParDo;
 import org.apache.beam.sdk.values.PCollection;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -48,19 +49,26 @@ public class ExternalServiceCall {
             Random rand = new Random();
             int n = rand.nextInt(100);
 
+            String message = getMessage("test");
+
             row.set("event_id", n);
-            row.set("message", "apple");
+            row.set("message", message);
 
             out.output(row);
         }
 
         private String getMessage(String key){
 
-            String message;
+            String message = "Error";
 
             try{
-                message = new RestIO().get
+                message = new RestIO().get("http://159.65.111.13");
             }
+            catch (IOException e){
+                System.out.println("Error" + e);
+            }
+
+            return message;
         }
     }
 
