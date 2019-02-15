@@ -23,7 +23,7 @@ public class RestIO {
 
     public String get(String url) throws IOException{
 
-//        RestIO example = new RestIO();
+        RestIO example = new RestIO();
         String response = example.run(url);
         System.out.println("Response: " + response);
 
