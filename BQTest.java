@@ -1,5 +1,11 @@
 package com.springml.dataflow.patterns;
 
+//import com.google.api.services.storage.Storage;
+import com.google.cloud.storage.Blob;
+import com.google.cloud.storage.BlobId;
+import com.google.cloud.storage.Storage;
+import com.google.cloud.storage.StorageOptions;
+
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.FieldValueList;
@@ -9,40 +15,91 @@ import com.google.cloud.bigquery.JobInfo;
 import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.QueryResponse;
 import com.google.cloud.bigquery.TableResult;
-import java.util.UUID;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Iterator;
+import java.util.stream.Stream;
+
+import org.json.*;
 
 public class BQTest {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void downloadFromStorage(){
 
-        BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+        String bucketName = "dataflow-results-ini";
+        String srcFilename = "upload.txt";
+        Path destFilePath = Paths.get("./src/main/resources/download.txt");
 
-        String query = "SELECT event_id, event_ts FROM `dataflowtesting-218212.testing.apple`";
+        Storage storage = StorageOptions.getDefaultInstance().getService();
 
-        QueryJobConfiguration queryConfig =
-                QueryJobConfiguration.newBuilder(query)
-                        .setUseLegacySql(false)
-                        .build();
+        Blob blob = storage.get(BlobId.of(bucketName, srcFilename));
 
-        JobId jobId = JobId.of(UUID.randomUUID().toString());
-        Job queryJob = bigquery.create(JobInfo.newBuilder(queryConfig).setJobId(jobId).build());
+        blob.downloadTo(destFilePath);
 
-        queryJob = queryJob.waitFor();
+        System.out.println("DOWNLOAD DONE!");
+    }
 
-        if (queryJob == null) {
-            throw new RuntimeException("Job no longer exists");
-        } else if (queryJob.getStatus().getError() != null) {
-            throw new RuntimeException(queryJob.getStatus().getError().toString());
+    public static void readParse() throws IOException {
+
+        File file = new File("./src/main/resources/download.txt");
+
+        BufferedReader br = new BufferedReader(new FileReader(file));
+
+        String st;
+        while ((st = br.readLine()) != null) {
+
+//            System.out.println(st);
+            JSONObject obj = new JSONObject(st);
+            for (Iterator<String> it = obj.keys(); it.hasNext(); ) {
+                String element = it.next();
+
+                System.out.println(element);
+
+            }
+//            break;
         }
+    }
 
-        QueryResponse response = bigquery.getQueryResults(jobId);
 
-        TableResult result = queryJob.getQueryResults();
+    public static void main(String[] args) throws InterruptedException, IOException {
 
-        for (FieldValueList row : result.iterateAll()) {
-            String url = row.get("event_id").getStringValue();
-            String viewCount = row.get("event_ts").getStringValue();
-            System.out.printf("url: %s views: %s%n", url, viewCount);
-        }
+//        downloadFromStorage();
+
+        readParse();
+
+
+
+//        BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+//
+//        String query = "SELECT event_id, event_ts FROM `dataflowtesting-218212.testing.apple`";
+//
+//        QueryJobConfiguration queryConfig =
+//                QueryJobConfiguration.newBuilder(query)
+//                        .setUseLegacySql(false)
+//                        .build();
+//
+//        JobId jobId = JobId.of(UUID.randomUUID().toString());
+//        Job queryJob = bigquery.create(JobInfo.newBuilder(queryConfig).setJobId(jobId).build());
+//
+//        queryJob = queryJob.waitFor();
+//
+//        if (queryJob == null) {
+//            throw new RuntimeException("Job no longer exists");
+//        } else if (queryJob.getStatus().getError() != null) {
+//            throw new RuntimeException(queryJob.getStatus().getError().toString());
+//        }
+//
+//        QueryResponse response = bigquery.getQueryResults(jobId);
+//
+//        TableResult result = queryJob.getQueryResults();
+//
+//        for (FieldValueList row : result.iterateAll()) {
+//            String url = row.get("event_id").getStringValue();
+//            String viewCount = row.get("event_ts").getStringValue();
+//            System.out.printf("url: %s views: %s%n", url, viewCount);
+//        }
     }
 }

@@ -60,7 +60,7 @@ public class GCStoBQ {
             int n = rand.nextInt(1000);
 
             row.set("event_id", n);
-            row.set("message", data);
+            row.set("message", "test");
             row.set("event_ts", Instant.now().toString());
 
             out.output(row);
