@@ -1,6 +1,5 @@
 package com.springml.dataflow.patterns;
 
-//import com.google.api.services.storage.Storage;
 import com.google.cloud.storage.Blob;
 import com.google.cloud.storage.BlobId;
 import com.google.cloud.storage.Storage;
@@ -21,7 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Iterator;
-import java.util.stream.Stream;
+import java.util.Map;
 
 import org.json.*;
 
@@ -53,13 +52,33 @@ public class BQTest {
 
 //            System.out.println(st);
             JSONObject obj = new JSONObject(st);
-            for (Iterator<String> it = obj.keys(); it.hasNext(); ) {
+
+            JSONObject data = (JSONObject) obj.get("data");
+            JSONArray stations = data.getJSONArray("stations");
+
+            for(Object o : stations){
+                JSONObject jsonlineitem = (JSONObject) o;
+//                System.out.println(((JSONObject) o).toString());
+
+                JSONObject singleStation = jsonlineitem;
+//                singleStation.keys();
+
+//                String key = jsonlineitem.getString()
+                for (Iterator<String> it = singleStation.keys(); it.hasNext(); ) {
                 String element = it.next();
 
-                System.out.println(element);
-
+                System.out.println(element + " : " + singleStation.get(element));
+                }
+                break;
             }
-//            break;
+
+
+//            for (Iterator<String> it = stations.keys(); it.hasNext(); ) {
+//                String element = it.next();
+//
+//                System.out.println(element);
+//            }
+            break;
         }
     }
 
